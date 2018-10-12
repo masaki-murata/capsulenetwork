@@ -78,10 +78,15 @@ class PrimaryCapsuleLayer(Layer):
         # v = uhat
         # b.shape = [batch_size, 1152, 1, 10, 1], c.shape = [batch_size, 1152, 1, 10, 1]
         # s.shape = [batch_size, 1, 1, 10, 16]
-
-        bc_shape = (self.batch_size, self.input_capsule_num, 1, self.output_capsule_num, 1)
-        s_shape   = (self.batch_size, 1, 1, self.output_capsule_num, self.output_capsule_dim)
-        b = K.zeros(shape=bc_shape)
+        print("aho")
+        print(self.input_capsule_num)
+#        bc_shape = (None, self.input_capsule_num, 1, self.output_capsule_num, 1)
+#        bc_shape = K.int_shape(uhat)[:-2]+(10,1)
+#         s_shape   = (self.batch_size, 1, 1, self.output_capsule_num, self.output_capsule_dim)
+#        b = K.zeros(shape=bc_shape)
+        b = tf.zeros(shape=[K.shape(uhat)[0], self.output_capsule_num, self.input_capsule_num])
+#        b = K.zeros(shape=(-1, self.input_capsule_num, 1, self.output_capsule_num, 1))
+        print("baka")
         c = K.zeros(shape=bc_shape)
         s = K.zeros(shape=s_shape)
         for i in range(self.routing_num):
