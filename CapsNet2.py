@@ -11,7 +11,7 @@ import tensorflow as tf
 from keras import backend as K
 from keras import layers
 from keras.engine.topology import Layer
-from keras.layers import Input, Dropout, Dense, Reshape
+from keras.layers import Input, Dropout, Dense, Reshape, Activation
 from keras.models import Model
 from keras.datasets import mnist
 from keras.utils import to_categorical
@@ -176,6 +176,7 @@ def CapsNet(input_shape, n_class, routing_num):
     # reshape1.shape = (batch_size, 1152, 8, 1, 1)
     capsule = PrimaryCapsuleLayer(routing_num=routing_num)(reshape1)
     prediction = CapsuleToPredict(name='prediction')(capsule)
+    prediction - Activation('softmax')(prediction)
 #     primarycaps = PrimaryCap(conv1, dim_vector=8, n_channels=32, kernel_size=9, strides=2, padding='valid')
 #     digitcaps = CapsuleLayer(num_capsule=n_class, dim_vector=16, num_routing=num_routing, name='digitcaps')(primarycaps)
 #     out_caps = Length(name='out_caps')(digitcaps)
