@@ -222,6 +222,8 @@ def train(model, data, epoch_size=100, batch_size=128):
     
 def main():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    x_train = x_train / 255
+    x_test = x_test / 255
     model = CapsNet(input_shape = (28, 28,1), n_class=10, routing_num=1)
     x_train = x_train.reshape(x_train.shape+(1,))
     x_test = x_test.reshape(x_test.shape+(1,))
@@ -230,7 +232,7 @@ def main():
     print(x_train.shape)
     model.summary()
     
-    train(model=model, data=((x_train, y_train), (x_test, y_test)), epoch_size=4, batch_size=8)    
+    train(model=model, data=((x_train, y_train), (x_test, y_test)), epoch_size=4, batch_size=32)    
 
 if __name__ == '__main__':
     main()
