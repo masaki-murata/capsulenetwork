@@ -84,13 +84,17 @@ class PrimaryCapsuleLayer(Layer):
 #        bc_shape = K.int_shape(uhat)[:-2]+(10,1)
 #         s_shape   = (self.batch_size, 1, 1, self.output_capsule_num, self.output_capsule_dim)
 #        b = K.zeros(shape=bc_shape)
-        b = tf.zeros(shape=[K.shape(uhat)[0], self.output_capsule_num, self.input_capsule_num])
+        b = tf.zeros(shape=[K.shape(uhat)[0], self.input_capsule_num, 1, self.output_capsule_num, 1])
+        c = tf.zeros(shape=[K.shape(uhat)[0], self.input_capsule_num, 1, self.output_capsule_num, 1])
+#        print(b.shape)
 #        b = K.zeros(shape=(-1, self.input_capsule_num, 1, self.output_capsule_num, 1))
         print("baka")
-        c = K.zeros(shape=bc_shape)
-        s = K.zeros(shape=s_shape)
+#        c = K.zeros(shape=bc_shape)
+        s = tf.zeros(shape=[K.shape(uhat)[0], 1, 1, self.output_capsule_num, self.output_capsule_dim])
+#        s = K.zeros(shape=s_shape)
         for i in range(self.routing_num):
-            c = tf.nn.softmax(b, axis=4)#, dim=-1)
+            c = tf.nn.softmax(b, dim=4)#, dim=-1)
+            print("c.shape = ",c.shape)
             s = K.sum(c*uhat, axis=1, keepdims=True)
             v = squash(s, axis=-1)
             # v.shape = [batch_size, 1, 1, 10, 16]
@@ -98,7 +102,7 @@ class PrimaryCapsuleLayer(Layer):
                 b = uhat * v
             else:
                 b += uhat * v        
-        
+        print(v.shape)
         return v
  
     def compute_output_shape(self, input_shape):
