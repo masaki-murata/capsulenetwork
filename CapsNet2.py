@@ -76,19 +76,19 @@ class PrimaryCapsuleLayer(Layer):
         uhat = K.sum(inputs*self.W, axis=2, keepdims=True)
         # uhat.shape = [batch_size, 1152, 1, 10, 16]
         # v = uhat
-        # b.shape = [1, 1152, 1, 10, 1], c.shape = [batch_size, 1152, 1, 10, 1]
-        # s.shape = [1, 1, 1, 10, 16]
+        # b.shape = [batch_size, 1152, 1, 10, 1], c.shape = [batch_size, 1152, 1, 10, 1]
+        # s.shape = [batch_size, 1, 1, 10, 16]
 
-        bc_shape = (1, self.input_capsule_num, 1, self.output_capsule_num, 1)
-        s_shape   = (1, 1, 1, self.output_capsule_num, self.output_capsule_dim)
+        bc_shape = (self.batch_size, self.input_capsule_num, 1, self.output_capsule_num, 1)
+        s_shape   = (self.batch_size, 1, 1, self.output_capsule_num, self.output_capsule_dim)
         b = K.zeros(shape=bc_shape)
         c = K.zeros(shape=bc_shape)
         s = K.zeros(shape=s_shape)
         for i in range(self.routing_num):
-            c = tf.nn.softmax(b, dim=1)
+            c = tf.nn.softmax(b, axis=4)#, dim=-1)
             s = K.sum(c*uhat, axis=1, keepdims=True)
             v = squash(s, axis=-1)
-            # v.shape = [1, 1, 1, 10, 1]
+            # v.shape = [batch_size, 1, 1, 10, 16]
             if i==0:
                 b = uhat * v
             else:
@@ -232,7 +232,7 @@ def main():
     print(x_train.shape)
     model.summary()
     
-    train(model=model, data=((x_train, y_train), (x_test, y_test)), epoch_size=4, batch_size=32)    
+    train(model=model, data=((x_train, y_train), (x_test, y_test)), epoch_size=4, batch_size=8)    
 
 if __name__ == '__main__':
     main()
