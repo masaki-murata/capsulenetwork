@@ -176,6 +176,7 @@ def CapsNet(input_shape, n_class, routing_num):
     if_capsule=False
     if if_capsule==False:
         prediction = Flatten()(x)
+        prediction = Dense(256, activation='relu')(prediction)
         prediction = Dense(10, activation='softmax')(prediction)
     else:        
         reshape1 = Reshape(target_shape=[-1, 8, 1, 1])(conv2)
