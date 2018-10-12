@@ -8,6 +8,7 @@ Created on Tue Oct  2 19:25:02 2018
 # import everything
 import numpy as np
 import tensorflow as tf
+import keras
 from keras import backend as K
 from keras import layers, losses
 from keras.engine.topology import Layer
@@ -35,7 +36,7 @@ set_session(tf.Session(config=config))
 
 def squash(_s, axis=-1): #_s.shape=[:, 16]
     _s_norm = K.sum(K.square(_s), axis=axis, keepdims=True)
-    _v = _s_norm*_s / ((1+_s_norm)*K.sqrt(_s_norm))
+    _v = _s_norm*_s / ((1+_s_norm)*K.sqrt(_s_norm+K.epsilon()))
     return _v
 
     
@@ -92,16 +93,22 @@ class PrimaryCapsuleLayer(Layer):
 #        c = K.zeros(shape=bc_shape)
         s = tf.zeros(shape=[K.shape(uhat)[0], 1, 1, self.output_capsule_num, self.output_capsule_dim])
 #        s = K.zeros(shape=s_shape)
-        for i in range(self.routing_num):
-            c = tf.nn.softmax(b, dim=4)#, dim=-1)
-            print("c.shape = ",c.shape)
-            s = K.sum(c*uhat, axis=1, keepdims=True)
-            v = squash(s, axis=-1)
-            # v.shape = [batch_size, 1, 1, 10, 16]
-            if i==0:
-                b = uhat * v
-            else:
-                b += uhat * v        
+        if_routing=False
+        if if_routing==True:
+            for i in range(self.routing_num):
+                c = tf.nn.softmax(b, dim=4)#, dim=-1)
+                print("c.shape = ",c.shape)
+                s = K.sum(c*uhat, axis=1, keepdims=True)
+                print("s.shape = ",s.shape)            
+                v = squash(s, axis=-1)
+                # v.shape = [batch_size, 1, 1, 10, 16]
+                if i==0:
+                    b = uhat * v
+                else:
+                    b += uhat * v     
+        else:
+        # uhat.shape = [batch_size, 1152, 1, 10, 16]
+            v = K.sum(uhat, axis=2, keepdims=True )
         print(v.shape)
         return v
  
@@ -210,7 +217,8 @@ def train(model, data, epoch_size=100, batch_size=128):
 
     (x_train, y_train), (x_test, y_test) = data
 
-    model.compile(optimizer="adam",
+    adam = keras.optimizers.Adam(lr=0.01)
+    model.compile(optimizer=adam,
                   loss='categorical_crossentropy',
 #                  loss=margin_loss,
                   metrics=['accuracy'],
