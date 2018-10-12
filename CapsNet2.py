@@ -217,7 +217,7 @@ def train(model, data, epoch_size=100, batch_size=128):
     
 def main():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    model = CapsNet(input_shape = (28, 28,1), n_class=10, routing_num=3)
+    model = CapsNet(input_shape = (28, 28,1), n_class=10, routing_num=0)
     x_train = x_train.reshape(x_train.shape+(1,))
     x_test = x_test.reshape(x_test.shape+(1,))
     y_train = to_categorical(y_train)
