@@ -11,7 +11,7 @@ import tensorflow as tf
 from keras import backend as K
 from keras import layers, losses
 from keras.engine.topology import Layer
-from keras.layers import Input, Dropout, Dense, Reshape, Activation
+from keras.layers import Input, Dropout, Dense, Reshape, Activation, Flatten
 from keras.models import Model
 from keras.datasets import mnist
 from keras.utils import to_categorical
@@ -173,21 +173,25 @@ def CapsNet(input_shape, n_class, routing_num):
     # conv1.shape = (batch_size, 20, 20, 256)
     conv2 = layers.Conv2D(filters=256, kernel_size=9, strides=2, padding='valid', activation='relu', name='conv2')(conv1)
     # conv2.shape = (batch_size, 6, 6, 256)
-    reshape1 = Reshape(target_shape=[-1, 8, 1, 1])(conv2)
-    # reshape1.shape = (batch_size, 1152, 8, 1, 1)
-    capsule = PrimaryCapsuleLayer(routing_num=routing_num)(reshape1)
-    prediction = CapsuleToPredict(name='prediction')(capsule)
-    prediction - Activation('softmax')(prediction)
+    if_capsule=False
+    if if_capsule==False:
+        prediction = Flatten()(conv2)
+        prediction = Dense(10, activation='softmax')(prediction)
+    else:        
+        reshape1 = Reshape(target_shape=[-1, 8, 1, 1])(conv2)
+        # reshape1.shape = (batch_size, 1152, 8, 1, 1)
+        capsule = PrimaryCapsuleLayer(routing_num=routing_num)(reshape1)
+        prediction = CapsuleToPredict(name='prediction')(capsule)
+        prediction - Activation('softmax')(prediction)
 #     primarycaps = PrimaryCap(conv1, dim_vector=8, n_channels=32, kernel_size=9, strides=2, padding='valid')
 #     digitcaps = CapsuleLayer(num_capsule=n_class, dim_vector=16, num_routing=num_routing, name='digitcaps')(primarycaps)
 #     out_caps = Length(name='out_caps')(digitcaps)
-
-    y = layers.Input(shape=(n_class,))
-    masked = Mask()([capsule, y])
-    x_recon = Dense(512, activation='relu')(masked)
-    x_recon = Dense(1024, activation='relu')(x_recon)
-    x_recon = Dense(np.prod(input_shape), activation='sigmoid')(x_recon)
-    x_recon = Reshape(target_shape=input_shape, name='out_recon')(x_recon)
+        y = layers.Input(shape=(n_class,))
+        masked = Mask()([capsule, y])
+        x_recon = Dense(512, activation='relu')(masked)
+        x_recon = Dense(1024, activation='relu')(x_recon)
+        x_recon = Dense(np.prod(input_shape), activation='sigmoid')(x_recon)
+        x_recon = Reshape(target_shape=input_shape, name='out_recon')(x_recon)
 
     return Model(x, prediction)
 #     return Model([x,y], [prediction, x_recon])
