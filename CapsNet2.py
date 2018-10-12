@@ -11,7 +11,7 @@ import tensorflow as tf
 from keras import backend as K
 from keras import layers, losses
 from keras.engine.topology import Layer
-from keras.layers import Input, Dropout, Dense, Reshape, Activation, Flatten
+from keras.layers import Input, Dropout, Dense, Reshape, Activation, Flatten, Conv2D
 from keras.models import Model
 from keras.datasets import mnist
 from keras.utils import to_categorical
@@ -175,7 +175,7 @@ def CapsNet(input_shape, n_class, routing_num):
     # conv2.shape = (batch_size, 6, 6, 256)
     if_capsule=False
     if if_capsule==False:
-        prediction = Flatten()(conv2)
+        prediction = Flatten()(x)
         prediction = Dense(10, activation='softmax')(prediction)
     else:        
         reshape1 = Reshape(target_shape=[-1, 8, 1, 1])(conv2)
