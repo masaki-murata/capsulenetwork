@@ -9,7 +9,7 @@ Created on Tue Oct  2 19:25:02 2018
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
-from keras import layers
+from keras import layers, losses
 from keras.engine.topology import Layer
 from keras.layers import Input, Dropout, Dense, Reshape, Activation
 from keras.models import Model
@@ -159,7 +159,8 @@ class Mask(Layer):
 
 # クラス分類の損失関数
 def margin_loss(y_true, y_pred): # y_true.shape=y_pred.shape=(batch_size, number of class, )
-    L = y_true * K.square(K.maximum(0., 0.9 - y_pred)) +         0.5 * (1 - y_true) * K.square(K.maximum(0., y_pred - 0.1))
+    _lambda = 0.5
+    L = y_true * K.square(K.maximum(0., 0.9 - y_pred)) + _lambda * (1 - y_true) * K.square(K.maximum(0., y_pred - 0.1))
 
     return K.mean(K.sum(L, 1))
     
@@ -196,7 +197,8 @@ def train(model, data, epoch_size=100, batch_size=128):
     (x_train, y_train), (x_test, y_test) = data
 
     model.compile(optimizer="adam",
-                  loss=margin_loss,
+                  loss=losses.categorical_crossentropy,
+#                  loss=margin_loss,
                   metrics=[metrics.categorical_accuracy],
 #                   loss=[margin_loss, 'mse'],
 #                   loss_weights=[1., 0.0005],
