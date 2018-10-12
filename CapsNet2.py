@@ -173,9 +173,9 @@ def CapsNet(input_shape, n_class, routing_num):
     # conv1.shape = (batch_size, 20, 20, 256)
     conv2 = layers.Conv2D(filters=256, kernel_size=9, strides=2, padding='valid', activation='relu', name='conv2')(conv1)
     # conv2.shape = (batch_size, 6, 6, 256)
-    if_capsule=False
+    if_capsule=True
     if if_capsule==False:
-        prediction = Flatten()(x)
+        prediction = Flatten()(conv2)
         prediction = Dense(256, activation='relu')(prediction)
         prediction = Dense(10, activation='softmax')(prediction)
     else:        
