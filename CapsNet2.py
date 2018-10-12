@@ -201,9 +201,9 @@ def train(model, data, epoch_size=100, batch_size=128):
     (x_train, y_train), (x_test, y_test) = data
 
     model.compile(optimizer="adam",
-                  loss=losses.categorical_crossentropy,
+                  loss='categorical_crossentropy',
 #                  loss=margin_loss,
-                  metrics=[metrics.categorical_accuracy],
+                  metrics=['accuracy'],
 #                   loss=[margin_loss, 'mse'],
 #                   loss_weights=[1., 0.0005],
                   #metrics={'prediction': 'accuracy'},
