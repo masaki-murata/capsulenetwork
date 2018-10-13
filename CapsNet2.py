@@ -40,7 +40,7 @@ def squash(_s, axis=-1): #_s.shape=[:, 16]
     return _v
 
     
-class PrimaryCapsuleLayer(Layer):
+class PrimaryCapsuleLayer(layers.Layer):
     # 入力：(batch_size,1152, 8, 1, 1)：２つ目の Conv 後に Reshape した後
     # 出力：(Batch_size,1152,10, 16, 1)
     def __init__(self, 
@@ -99,7 +99,7 @@ class PrimaryCapsuleLayer(Layer):
 #        s = tf.zeros(shape=[K.shape(uhat)[0], 1, 1, self.output_capsule_num, self.output_capsule_dim])
 #        s = K.zeros(shape=s_shape)
         if_routing=True
-        if if_routing==True:
+        if if_routing:
             for i in range(self.routing_num):
                 c = tf.nn.softmax(b, dim=3)#, dim=-1)
                 print("c.shape = ",c.shape)
@@ -107,27 +107,35 @@ class PrimaryCapsuleLayer(Layer):
                 print("s.shape = ",s.shape)            
                 v = squash(s, axis=-1)
                 # v.shape = [batch_size, 1, 1, 10, 16]
-                if i==0:
-                    b = uhat * v
-                else:
-                    b += uhat * v     
+                b += uhat * v 
+#                if i==0:
+#                    b = uhat * v
+#                else:
+#                    b += uhat * v     
         else:
         # uhat.shape = [batch_size, 1152, 1, 10, 16]
             v = K.sum(uhat, axis=2, keepdims=True )
-        print(v.shape)
+        v = K.squeeze(K.squeeze(v, axis=1), axis=1)
+        print("v.shape = ", v.shape)
+        self.vshape=K.int_shape(v)
         return v
  
     def compute_output_shape(self, input_shape):
-        return tuple([None, self.output_capsule_num, self.output_capsule_dim])
+        return self.vshape
+#        return tuple([None, self.output_capsule_num, self.output_capsule_dim])
 
         
-class CapsuleToPredict(Layer):
+class CapsuleToPredict(layers.Layer):
 
     def call(self, inputs, **kwargs):
         return K.sqrt(K.sum(K.square(inputs), -1))
 
     def compute_output_shape(self, input_shape):
         return input_shape[:-1]
+
+    def get_config(self):
+        config = super(CapsuleToPredict, self).get_config()
+        return config
 
 
 class Mask(Layer):
@@ -195,7 +203,7 @@ def CapsNet(input_shape, n_class, routing_num):
     conv2 = layers.Conv2D(filters=256, kernel_size=9, strides=2, padding='valid', activation='relu', name='conv2')(conv1)
     # conv2.shape = (batch_size, 6, 6, 256)
     if_capsule=True
-    if if_capsule==False:
+    if not if_capsule:
         prediction = Flatten()(conv2)
         prediction = Dense(256, activation='relu')(prediction)
         prediction = Dense(10, activation='softmax')(prediction)
