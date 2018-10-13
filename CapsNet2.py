@@ -61,8 +61,10 @@ class PrimaryCapsuleLayer(Layer):
               input_shape,
               ):
         self.batch_size = input_shape[0]
-        self.input_capsule_num = input_shape[1] # 1152
-        self.input_capsule_dim = input_shape[2]  # 8
+        self.input_capsule_num = 1152
+        self.input_capsule_dim = 8
+#        self.input_capsule_num = input_shape[1] # 1152
+#        self.input_capsule_dim = input_shape[2]  # 8
         # W.shape = [1, 1152, 8, 10, 16]
         # W_{ij} の i =1,...,1152, j =1,...10
         self.W = self.add_weight(name='kernel', 
@@ -73,8 +75,11 @@ class PrimaryCapsuleLayer(Layer):
         super(PrimaryCapsuleLayer, self).build(input_shape)
         
     def call(self, inputs):
+        # inputs.shape = [batch_size, 6,6, 256]
+        print("aho0")
+        inputs_expand = K.reshape(inputs, (-1, self.input_capsule_num, self.input_capsule_dim,1,1))
         # inputs.shape = [batch_size, 1152, 8, 1, 1]
-        uhat = K.sum(inputs*self.W, axis=2, keepdims=True)
+        uhat = K.sum(inputs_expand*self.W, axis=2, keepdims=True)
         # uhat.shape = [batch_size, 1152, 1, 10, 16]
         # v = uhat
         # b.shape = [batch_size, 1152, 1, 10, 1], c.shape = [batch_size, 1152, 1, 10, 1]
@@ -86,17 +91,17 @@ class PrimaryCapsuleLayer(Layer):
 #         s_shape   = (self.batch_size, 1, 1, self.output_capsule_num, self.output_capsule_dim)
 #        b = K.zeros(shape=bc_shape)
         b = tf.zeros(shape=[K.shape(uhat)[0], self.input_capsule_num, 1, self.output_capsule_num, 1])
-        c = tf.zeros(shape=[K.shape(uhat)[0], self.input_capsule_num, 1, self.output_capsule_num, 1])
+#        c = tf.zeros(shape=[K.shape(uhat)[0], self.input_capsule_num, 1, self.output_capsule_num, 1])
 #        print(b.shape)
 #        b = K.zeros(shape=(-1, self.input_capsule_num, 1, self.output_capsule_num, 1))
         print("baka")
 #        c = K.zeros(shape=bc_shape)
-        s = tf.zeros(shape=[K.shape(uhat)[0], 1, 1, self.output_capsule_num, self.output_capsule_dim])
+#        s = tf.zeros(shape=[K.shape(uhat)[0], 1, 1, self.output_capsule_num, self.output_capsule_dim])
 #        s = K.zeros(shape=s_shape)
-        if_routing=False
+        if_routing=True
         if if_routing==True:
             for i in range(self.routing_num):
-                c = tf.nn.softmax(b, dim=4)#, dim=-1)
+                c = tf.nn.softmax(b, dim=3)#, dim=-1)
                 print("c.shape = ",c.shape)
                 s = K.sum(c*uhat, axis=1, keepdims=True)
                 print("s.shape = ",s.shape)            
@@ -195,20 +200,22 @@ def CapsNet(input_shape, n_class, routing_num):
         prediction = Dense(256, activation='relu')(prediction)
         prediction = Dense(10, activation='softmax')(prediction)
     else:        
-        reshape1 = Reshape(target_shape=[-1, 8, 1, 1])(conv2)
+#        reshape1 = Reshape(target_shape=[-1, 8, 1, 1])(conv2)
         # reshape1.shape = (batch_size, 1152, 8, 1, 1)
-        capsule = PrimaryCapsuleLayer(routing_num=routing_num)(reshape1)
+        capsule = PrimaryCapsuleLayer(routing_num=routing_num)(conv2)
         prediction = CapsuleToPredict(name='prediction')(capsule)
-        prediction - Activation('softmax', name='predict_softmax')(prediction)
+#        prediction - Activation('softmax', name='predict_softmax')(prediction)
 #     primarycaps = PrimaryCap(conv1, dim_vector=8, n_channels=32, kernel_size=9, strides=2, padding='valid')
 #     digitcaps = CapsuleLayer(num_capsule=n_class, dim_vector=16, num_routing=num_routing, name='digitcaps')(primarycaps)
 #     out_caps = Length(name='out_caps')(digitcaps)
-        y = layers.Input(shape=(n_class,))
-        masked = Mask()([capsule, y])
-        x_recon = Dense(512, activation='relu')(masked)
-        x_recon = Dense(1024, activation='relu')(x_recon)
-        x_recon = Dense(np.prod(input_shape), activation='sigmoid')(x_recon)
-        x_recon = Reshape(target_shape=input_shape, name='out_recon')(x_recon)
+
+        # reconstruction
+#        y = layers.Input(shape=(n_class,))
+#        masked = Mask()([capsule, y])
+#        x_recon = Dense(512, activation='relu')(masked)
+#        x_recon = Dense(1024, activation='relu')(x_recon)
+#        x_recon = Dense(np.prod(input_shape), activation='sigmoid')(x_recon)
+#        x_recon = Reshape(target_shape=input_shape, name='out_recon')(x_recon)
 
     return Model(x, prediction)
 #     return Model([x,y], [prediction, x_recon])
@@ -217,11 +224,11 @@ def train(model, data, epoch_size=100, batch_size=128):
 
     (x_train, y_train), (x_test, y_test) = data
 
-    adam = keras.optimizers.Adam(lr=0.01)
+    adam = keras.optimizers.Adam(lr=0.001)
     model.compile(optimizer=adam,
-                  loss='categorical_crossentropy',
-#                  loss=margin_loss,
-                  metrics={'predict_softmax': 'categorical_accuracy'},
+                  loss=[margin_loss],
+#                  loss='categorical_crossentropy',
+                  metrics={'prediction': 'accuracy'},
 #                  metrics=['accuracy'],
 #                   loss=[margin_loss, 'mse'],
 #                   loss_weights=[1., 0.0005],
@@ -250,7 +257,7 @@ def main():
     print(x_train.shape)
     model.summary()
     
-    train(model=model, data=((x_train, y_train), (x_test, y_test)), epoch_size=4, batch_size=8)    
+    train(model=model, data=((x_train, y_train), (x_test, y_test)), epoch_size=4, batch_size=128)    
 
 if __name__ == '__main__':
     main()
