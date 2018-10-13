@@ -27,6 +27,16 @@ from capsulelayers import CapsuleLayer, PrimaryCap, Length, Mask
 
 K.set_image_data_format('channels_last')
 
+# setting GPU
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+config = tf.ConfigProto(
+    gpu_options=tf.GPUOptions(
+        visible_device_list="1", # specify GPU number
+        allow_growth=True
+    )
+)
+set_session(tf.Session(config=config))
 
 
 def CapsNet(input_shape, n_class, routings, if_eval_manipulate):
