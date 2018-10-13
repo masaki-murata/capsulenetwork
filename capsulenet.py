@@ -116,7 +116,7 @@ def train(model, data, args):
     lr_decay = callbacks.LearningRateScheduler(schedule=lambda epoch: args.lr * (args.lr_decay ** epoch))
 
     # compile the model
-    if if_eval_manipulate:
+    if args.if_eval_manipulate:
         model.compile(optimizer=optimizers.Adam(lr=args.lr),
                       loss=[margin_loss, 'mse'],
                       loss_weights=[1., args.lam_recon],
@@ -139,7 +139,10 @@ def train(model, data, args):
         generator = train_datagen.flow(x, y, batch_size=batch_size)
         while 1:
             x_batch, y_batch = generator.next()
-            yield ([x_batch, y_batch], [y_batch, x_batch])
+            if args.if_eval_manipulate:
+                yield ([x_batch, y_batch], [y_batch, x_batch])
+            else:
+                yield ([x_batch], [y_batch])
 
     # Training with data augmentation. If shift_fraction=0., also no augmentation.
     model.fit_generator(generator=train_generator(x_train, y_train, args.batch_size, args.shift_fraction),
@@ -242,6 +245,7 @@ if __name__ == "__main__":
                         help="Digit to manipulate")
     parser.add_argument('-w', '--weights', default=None,
                         help="The path of the saved weights. Should be specified when testing")
+    parser.add_argument('--if_eval_manipulate', default=False)
     args = parser.parse_args()
     print(args)
 
