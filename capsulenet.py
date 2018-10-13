@@ -147,7 +147,8 @@ def train(model, data, args):
                         epochs=args.epochs,
                         validation_data=[[x_test], [y_test]],
 #                        validation_data=[[x_test, y_test], [y_test, x_test]],
-                        callbacks=[log, tb, checkpoint, lr_decay])
+#                        callbacks=[log, tb, checkpoint, lr_decay],
+                        )
     # End: Training with data augmentation -----------------------------------------------------------------------#
 
     model.save_weights(args.save_dir + '/trained_model.h5')
