@@ -199,7 +199,7 @@ def CapsNet(input_shape, n_class, routing_num):
         # reshape1.shape = (batch_size, 1152, 8, 1, 1)
         capsule = PrimaryCapsuleLayer(routing_num=routing_num)(reshape1)
         prediction = CapsuleToPredict(name='prediction')(capsule)
-        prediction - Activation('softmax')(prediction)
+        prediction - Activation('softmax', name='predict_softmax')(prediction)
 #     primarycaps = PrimaryCap(conv1, dim_vector=8, n_channels=32, kernel_size=9, strides=2, padding='valid')
 #     digitcaps = CapsuleLayer(num_capsule=n_class, dim_vector=16, num_routing=num_routing, name='digitcaps')(primarycaps)
 #     out_caps = Length(name='out_caps')(digitcaps)
@@ -221,7 +221,7 @@ def train(model, data, epoch_size=100, batch_size=128):
     model.compile(optimizer=adam,
                   loss='categorical_crossentropy',
 #                  loss=margin_loss,
-                  metrics={'capsnet': 'accuracy'},
+                  metrics={'predict_softmax': 'accuracy'},
 #                  metrics=['accuracy'],
 #                   loss=[margin_loss, 'mse'],
 #                   loss_weights=[1., 0.0005],
