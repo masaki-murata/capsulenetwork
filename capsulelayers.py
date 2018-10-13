@@ -106,8 +106,10 @@ class CapsuleLayer(layers.Layer):
 
     def build(self, input_shape):
         assert len(input_shape) >= 3, "The input Tensor should have shape=[None, input_num_capsule, input_dim_capsule]"
-        self.input_num_capsule = input_shape[1]
-        self.input_dim_capsule = input_shape[2]
+        self.input_num_capsule = 1152
+        self.input_dim_capsule = 8
+#        self.input_num_capsule = input_shape[1]
+#        self.input_dim_capsule = input_shape[2]
 
         # Transform matrix
         self.W = self.add_weight(shape=[1, self.num_capsule, self.input_num_capsule,
@@ -124,7 +126,12 @@ class CapsuleLayer(layers.Layer):
     def call(self, inputs, training=None):
         # inputs.shape=[None, input_num_capsule, input_dim_capsule]
         # inputs_expand.shape=[None, 1, input_num_capsule, 1, input_dim_capsule]
-        inputs_expand = K.expand_dims(K.expand_dims(inputs, axis=1), axis=-1)
+        print(self.input_num_capsule)
+        print(inputs.shape)
+        inputs_expand = K.reshape(inputs, (-1, 1, self.input_num_capsule, 1, self.input_dim_capsule))
+#        inputs_expand = K.reshape(inputs, (K.int_shape(inputs)[0], 1, 1152, 1, 8))
+#        inputs_expand = K.expand_dims(K.expand_dims(inputs, axis=1), axis=-1)
+        print(inputs_expand.shape)
 
         # Replicate num_capsule dimension to prepare being multiplied by W
         # inputs_tiled.shape=[None, num_capsule, input_num_capsule, input_dim_capsule]
@@ -142,19 +149,24 @@ class CapsuleLayer(layers.Layer):
         # Begin: Routing algorithm ---------------------------------------------------------------------#
         # The prior for coupling coefficient, initialized as zeros.
         # b.shape = [None, self.num_capsule, self.input_num_capsule].
-        b = tf.zeros(shape=[K.shape(inputs_hat)[0], self.num_capsule, self.input_num_capsule])
+        b = tf.zeros(shape=[K.shape(inputs_hat)[0], self.num_capsule, self.input_num_capsule, 1])
 
         assert self.routings > 0, 'The routings should be > 0.'
         for i in range(self.routings):
-            # c.shape=[batch_size, num_capsule, input_num_capsule]
+            # c.shape=[batch_size, num_capsule, input_num_capsule, 1]
             c = tf.nn.softmax(b, dim=1)
+            print(c.shape)
 
-            # c.shape =  [batch_size, num_capsule, input_num_capsule]
+            # c.shape =  [batch_size, num_capsule, input_num_capsule, 1]
             # inputs_hat.shape=[None, num_capsule, input_num_capsule, dim_capsule]
             # The first two dimensions as `batch` dimension,
             # then matmal: [input_num_capsule] x [input_num_capsule, dim_capsule] -> [dim_capsule].
             # outputs.shape=[None, num_capsule, dim_capsule]
-            outputs = squash(K.batch_dot(c, inputs_hat, [2, 2]))  # [None, 10, 16]
+            outputs = squash(K.sum(c*inputs_hat, axis=-2))
+            print("aho")
+            print(outputs.shape)
+            print("inputs_hat = ", inputs_hat.shape)
+#            outputs = squash(K.batch_dot(c, inputs_hat, [2, 2]))  # [None, 10, 16]
 
             if i < self.routings - 1:
                 # outputs.shape =  [None, num_capsule, dim_capsule]
@@ -162,7 +174,8 @@ class CapsuleLayer(layers.Layer):
                 # The first two dimensions as `batch` dimension,
                 # then matmal: [dim_capsule] x [input_num_capsule, dim_capsule]^T -> [input_num_capsule].
                 # b.shape=[batch_size, num_capsule, input_num_capsule]
-                b += K.batch_dot(outputs, inputs_hat, [2, 3])
+                b += K.sum(K.expand_dims(outputs, axis=-2)*inputs_hat, axis=-1, keepdims=True)
+#                b += K.batch_dot(outputs, inputs_hat, [2, 3])
         # End: Routing algorithm -----------------------------------------------------------------------#
 
         return outputs
@@ -190,8 +203,9 @@ def PrimaryCap(inputs, dim_capsule, n_channels, kernel_size, strides, padding):
     """
     output = layers.Conv2D(filters=dim_capsule*n_channels, kernel_size=kernel_size, strides=strides, padding=padding,
                            name='primarycap_conv2d')(inputs)
-    outputs = layers.Reshape(target_shape=[-1, dim_capsule], name='primarycap_reshape')(output)
-    return layers.Lambda(squash, name='primarycap_squash')(outputs)
+    return output
+#    outputs = layers.Reshape(target_shape=[-1, dim_capsule], name='primarycap_reshape')(output)
+#    return layers.Lambda(squash, name='primarycap_squash')(outputs)
 
 
 """
