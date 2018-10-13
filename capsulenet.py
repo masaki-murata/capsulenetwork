@@ -124,7 +124,7 @@ def train(model, data, args):
     else:
         model.compile(optimizer=optimizers.Adam(lr=args.lr),
                       loss=[margin_loss],
-                      metrics='capsnet')
+                      metrics={'capsnet': 'accuracy'})
 
     """
     # Training without data augmentation:
