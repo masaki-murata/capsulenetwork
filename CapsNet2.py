@@ -221,7 +221,7 @@ def train(model, data, epoch_size=100, batch_size=128):
     model.compile(optimizer=adam,
                   loss='categorical_crossentropy',
 #                  loss=margin_loss,
-                  metrics={'predict_softmax': 'accuracy'},
+                  metrics={'predict_softmax': 'categorical_accuracy'},
 #                  metrics=['accuracy'],
 #                   loss=[margin_loss, 'mse'],
 #                   loss_weights=[1., 0.0005],
