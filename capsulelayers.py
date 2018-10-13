@@ -110,29 +110,34 @@ class CapsuleLayer(layers.Layer):
         self.input_dim_capsule = input_shape[2]
 
         # Transform matrix
-        self.W = self.add_weight(shape=[self.num_capsule, self.input_num_capsule,
+        self.W = self.add_weight(shape=[1, self.num_capsule, self.input_num_capsule,
                                         self.dim_capsule, self.input_dim_capsule],
                                  initializer=self.kernel_initializer,
                                  name='W')
+#        self.W = self.add_weight(shape=[self.num_capsule, self.input_num_capsule,
+#                                        self.dim_capsule, self.input_dim_capsule],
+#                                 initializer=self.kernel_initializer,
+#                                 name='W')
 
         self.built = True
 
     def call(self, inputs, training=None):
         # inputs.shape=[None, input_num_capsule, input_dim_capsule]
-        # inputs_expand.shape=[None, 1, input_num_capsule, input_dim_capsule]
-        inputs_expand = K.expand_dims(inputs, 1)
+        # inputs_expand.shape=[None, 1, input_num_capsule, 1, input_dim_capsule]
+        inputs_expand = K.expand_dims(K.expand_dims(inputs, axis=1), axis=-1)
 
         # Replicate num_capsule dimension to prepare being multiplied by W
         # inputs_tiled.shape=[None, num_capsule, input_num_capsule, input_dim_capsule]
-        inputs_tiled = K.tile(inputs_expand, [1, self.num_capsule, 1, 1])
+#        inputs_tiled = K.tile(inputs_expand, [1, self.num_capsule, 1, 1])
 
         # Compute `inputs * W` by scanning inputs_tiled on dimension 0.
         # x.shape=[num_capsule, input_num_capsule, input_dim_capsule]
-        # W.shape=[num_capsule, input_num_capsule, dim_capsule, input_dim_capsule]
+        # W.shape=[1, num_capsule, input_num_capsule, dim_capsule, input_dim_capsule]
         # Regard the first two dimensions as `batch` dimension,
         # then matmul: [input_dim_capsule] x [dim_capsule, input_dim_capsule]^T -> [dim_capsule].
         # inputs_hat.shape = [None, num_capsule, input_num_capsule, dim_capsule]
-        inputs_hat = K.map_fn(lambda x: K.batch_dot(x, self.W, [2, 3]), elems=inputs_tiled)
+        inputs_hat = K.sum(self.W*inputs_expand, axis=-1)
+#        inputs_hat = K.map_fn(lambda x: K.batch_dot(x, self.W, [2, 3]), elems=inputs_tiled)
 
         # Begin: Routing algorithm ---------------------------------------------------------------------#
         # The prior for coupling coefficient, initialized as zeros.
