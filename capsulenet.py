@@ -28,7 +28,8 @@ from capsulelayers import CapsuleLayer, PrimaryCap, Length, Mask
 K.set_image_data_format('channels_last')
 
 
-def CapsNet(input_shape, n_class, routings):
+
+def CapsNet(input_shape, n_class, routings, if_eval_manipulate):
     """
     A Capsule Network on MNIST.
     :param input_shape: data shape, 3d, [width, height, channels]
@@ -66,15 +67,20 @@ def CapsNet(input_shape, n_class, routings):
     decoder.add(layers.Reshape(target_shape=input_shape, name='out_recon'))
 
     # Models for training and evaluation (prediction)
-    train_model = models.Model([x, y], [out_caps, decoder(masked_by_y)])
-    eval_model = models.Model(x, [out_caps, decoder(masked)])
-
-    # manipulate model
-    noise = layers.Input(shape=(n_class, 16))
-    noised_digitcaps = layers.Add()([digitcaps, noise])
-    masked_noised_y = Mask()([noised_digitcaps, y])
-    manipulate_model = models.Model([x, y, noise], decoder(masked_noised_y))
-    return train_model, eval_model, manipulate_model
+    if_eval_manipulate=False
+    if if_eval_manipulate:
+        train_model = models.Model([x, y], [out_caps, decoder(masked_by_y)])
+        eval_model = models.Model(x, [out_caps, decoder(masked)])
+    
+        # manipulate model
+        noise = layers.Input(shape=(n_class, 16))
+        noised_digitcaps = layers.Add()([digitcaps, noise])
+        masked_noised_y = Mask()([noised_digitcaps, y])
+        manipulate_model = models.Model([x, y, noise], decoder(masked_noised_y))
+        return train_model, eval_model, manipulate_model
+    else:
+        train_model = models.Model([x], [out_caps])
+        return train_model
 
 
 def margin_loss(y_true, y_pred):
@@ -110,17 +116,22 @@ def train(model, data, args):
     lr_decay = callbacks.LearningRateScheduler(schedule=lambda epoch: args.lr * (args.lr_decay ** epoch))
 
     # compile the model
-    model.compile(optimizer=optimizers.Adam(lr=args.lr),
-                  loss=[margin_loss, 'mse'],
-                  loss_weights=[1., args.lam_recon],
-                  metrics={'capsnet': 'accuracy'})
+    if if_eval_manipulate:
+        model.compile(optimizer=optimizers.Adam(lr=args.lr),
+                      loss=[margin_loss, 'mse'],
+                      loss_weights=[1., args.lam_recon],
+                      metrics={'capsnet': 'accuracy'})
+    else:
+        model.compile(optimizer=optimizers.Adam(lr=args.lr),
+                      loss=[margin_loss],
+                      metrics='capsnet')
 
     """
     # Training without data augmentation:
     model.fit([x_train, y_train], [y_train, x_train], batch_size=args.batch_size, epochs=args.epochs,
               validation_data=[[x_test, y_test], [y_test, x_test]], callbacks=[log, tb, checkpoint, lr_decay])
     """
-
+    
     # Begin: Training with data augmentation ---------------------------------------------------------------------#
     def train_generator(x, y, batch_size, shift_fraction=0.):
         train_datagen = ImageDataGenerator(width_shift_range=shift_fraction,
@@ -208,7 +219,7 @@ if __name__ == "__main__":
 
     # setting the hyper parameters
     parser = argparse.ArgumentParser(description="Capsule Network on MNIST.")
-    parser.add_argument('--epochs', default=50, type=int)
+    parser.add_argument('--epochs', default=10, type=int)
     parser.add_argument('--batch_size', default=100, type=int)
     parser.add_argument('--lr', default=0.001, type=float,
                         help="Initial learning rate")
@@ -218,7 +229,7 @@ if __name__ == "__main__":
                         help="The coefficient for the loss of decoder")
     parser.add_argument('-r', '--routings', default=3, type=int,
                         help="Number of iterations used in routing algorithm. should > 0")
-    parser.add_argument('--shift_fraction', default=0.1, type=float,
+    parser.add_argument('--shift_fraction', default=0., type=float,
                         help="Fraction of pixels to shift at most in each direction.")
     parser.add_argument('--debug', action='store_true',
                         help="Save weights by TensorBoard")
@@ -239,9 +250,17 @@ if __name__ == "__main__":
     (x_train, y_train), (x_test, y_test) = load_mnist()
 
     # define model
-    model, eval_model, manipulate_model = CapsNet(input_shape=x_train.shape[1:],
-                                                  n_class=len(np.unique(np.argmax(y_train, 1))),
-                                                  routings=args.routings)
+    if_eval_manipulate=False
+    if if_eval_manipulate:
+        model, eval_model, manipulate_model = CapsNet(input_shape=x_train.shape[1:],
+                                                      n_class=len(np.unique(np.argmax(y_train, 1))),
+                                                      routings=args.routings,
+                                                      if_eval_manipulate=if_eval_manipulate)
+    else:
+        model = CapsNet(input_shape=x_train.shape[1:],
+                        n_class=len(np.unique(np.argmax(y_train, 1))),
+                        routings=args.routings,
+                        if_eval_manipulate=if_eval_manipulate)
     model.summary()
 
     # train or test
@@ -252,5 +271,6 @@ if __name__ == "__main__":
     else:  # as long as weights are given, will run testing
         if args.weights is None:
             print('No weights are provided. Will test using random initialized weights.')
-        manipulate_latent(manipulate_model, (x_test, y_test), args)
-        test(model=eval_model, data=(x_test, y_test), args=args)
+        if if_eval_manipulate:
+            manipulate_latent(manipulate_model, (x_test, y_test), args)
+            test(model=eval_model, data=(x_test, y_test), args=args)
