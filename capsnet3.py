@@ -218,15 +218,15 @@ def CapsNet(input_shape, n_class, routing_num):
 #     out_caps = Length(name='out_caps')(digitcaps)
 
         # reconstruction
-#        y = layers.Input(shape=(n_class,))
-#        masked = Mask()([capsule, y])
-#        x_recon = Dense(512, activation='relu')(masked)
-#        x_recon = Dense(1024, activation='relu')(x_recon)
-#        x_recon = Dense(np.prod(input_shape), activation='sigmoid')(x_recon)
-#        x_recon = Reshape(target_shape=input_shape, name='out_recon')(x_recon)
+        y = layers.Input(shape=(n_class,))
+        masked = Mask()([capsule, y])
+        x_recon = Dense(512, activation='relu')(masked)
+        x_recon = Dense(1024, activation='relu')(x_recon)
+        x_recon = Dense(np.prod(input_shape), activation='sigmoid')(x_recon)
+        x_recon = Reshape(target_shape=input_shape, name='out_recon')(x_recon)
 
-    return Model(x, prediction)
-#     return Model([x,y], [prediction, x_recon])
+#    return Model(x, prediction)
+    return Model([x,y], [prediction, x_recon])
 
 def train(model, data, epoch_size=100, batch_size=128):
 
@@ -234,7 +234,7 @@ def train(model, data, epoch_size=100, batch_size=128):
 
     adam = keras.optimizers.Adam(lr=0.001)
     model.compile(optimizer=adam,
-                  loss=[margin_loss],
+                  loss=[margin_loss, 'mse'],
 #                  loss='categorical_crossentropy',
                   metrics={'prediction': 'accuracy'},
 #                  metrics=['accuracy'],
@@ -243,11 +243,11 @@ def train(model, data, epoch_size=100, batch_size=128):
                   #metrics={'prediction': 'accuracy'},
                   )
     
-    model.fit(x_train,y_train, batch_size=batch_size, epochs=epoch_size)
+#    model.fit(x_train,y_train, batch_size=batch_size, epochs=epoch_size)
 
-#     model.fit([x_train, y_train],[y_train, x_train], batch_size=8, epochs=epoch_size)
-#               validation_data=[[x_test, y_test], [y_test, x_test]],
-#              )
+    model.fit([x_train, y_train],[y_train, x_train], batch_size=8, epochs=epoch_size,
+              validation_data=[[x_test, y_test], [y_test, x_test]],
+              )
 
 
     return model
